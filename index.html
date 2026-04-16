@@ -131,6 +131,16 @@
     <div id="detailContent"></div>
   </aside>
 
+  <div id="battleModal" class="modal" style="visibility:hidden;opacity:0;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="background:linear-gradient(180deg,#07121a,#08151a);border-radius:18px;padding:24px;max-width:900px;width:100%;max-height:90vh;overflow:auto;border:2px solid rgba(255,222,0,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h2 style="margin:0">⚔️ Battle Simulator</h2>
+        <button id="closeBattle" class="btn" style="background:#ef4444">Close</button>
+      </div>
+      <div id="battleContent"></div>
+    </div>
+  </div>
+
   <div class="teambar" id="teambar" aria-label="Your team bar">
     <div id="teamSlots" style="display:flex;gap:10px"></div>
     <div style="margin-left:auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
@@ -459,18 +469,100 @@
       const all = JSON.parse(localStorage.getItem('poketeams')||'{}');
       const names = Object.keys(all);
       if(names.length < 2){ setStatus('Save at least 2 teams to battle'); setTimeout(()=>setStatus('',false),900); return; }
-      const choice = prompt('Pick two teams to battle:\n' + names.map((n,i)=>`${i+1}. ${n}`).join('\n') + '\n\nEnter like: Team1 vs Team2');
-      if(!choice || !choice.includes('vs')) return;
-      const [t1name, t2name] = choice.split('vs').map(s=>s.trim());
-      if(!all[t1name] || !all[t2name]){ setStatus('Invalid team names'); setTimeout(()=>setStatus('',false),900); return; }
-      const t1 = await Promise.all(all[t1name].map(n=>fetchDetails(n)));
-      const t2 = await Promise.all(all[t2name].map(n=>fetchDetails(n)));
-      const t1Score = t1.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
-      const t2Score = t2.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
-      const winner = t1Score > t2Score ? t1name : t2name;
-      const panel = $('detailPanel'); panel.classList.add('open');
-      const content = $('detailContent');
-      content.innerHTML = `<h2>⚔️ Battle Result</h2><div style="margin:12px 0"><strong>${t1name}</strong>: ${t1Score} points</div><div style="margin:12px 0"><strong>${t2name}</strong>: ${t2Score} points</div><h3 style="color:var(--poke-yellow)">Winner: ${winner}!</h3>`;
+      
+      const modal = $('battleModal');
+      modal.style.visibility = 'visible';
+      modal.style.opacity = '1';
+      const content = $('battleContent');
+      
+      content.innerHTML = '<h3>Select Team 1</h3><div id="team1Select" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px"></div><h3>Select Team 2</h3><div id="team2Select" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px"></div><div id="battleResult" style="margin-top:24px"></div>';
+      
+      let selectedTeams = {team1: null, team2: null};
+      
+      async function renderTeamCards(containerId, teamSlot){
+        const container = $(containerId);
+        for(const teamName of names){
+          const card = document.createElement('div');
+          card.style.cssText = 'background:linear-gradient(135deg,rgba(255,222,0,0.06),rgba(59,76,202,0.04));border:2px solid rgba(255,222,0,0.1);border-radius:12px;padding:12px;cursor:pointer;transition:all .2s';
+          card.innerHTML = `<div style="font-weight:600;margin-bottom:8px;text-transform:capitalize">${teamName}</div>`;
+          
+          const sprites = document.createElement('div');
+          sprites.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;justify-content:center';
+          for(const pokeName of all[teamName]){
+            const img = document.createElement('img');
+            img.style.cssText = 'width:48px;height:48px';
+            const details = await fetchDetails(pokeName);
+            img.src = details.sprites.front_default;
+            sprites.appendChild(img);
+          }
+          card.appendChild(sprites);
+          
+          card.addEventListener('click', ()=>{
+            selectedTeams[teamSlot] = teamName;
+            document.querySelectorAll(`#${containerId} > div`).forEach(c=>c.style.border='2px solid rgba(255,222,0,0.1)');
+            card.style.border = '2px solid var(--poke-yellow)';
+            card.style.boxShadow = '0 8px 24px rgba(255,222,0,0.3)';
+            
+            if(selectedTeams.team1 && selectedTeams.team2){
+              simulateBattle(selectedTeams.team1, selectedTeams.team2, all);
+            }
+          });
+          
+          container.appendChild(card);
+        }
+      }
+      
+      await renderTeamCards('team1Select', 'team1');
+      await renderTeamCards('team2Select', 'team2');
+    }
+    
+    async function simulateBattle(t1name, t2name, allTeams){
+      const resultDiv = $('battleResult');
+      resultDiv.innerHTML = '<div style="text-align:center;color:var(--muted)">Calculating...</div>';
+      
+      const t1 = await Promise.all(allTeams[t1name].map(n=>fetchDetails(n)));
+      const t2 = await Promise.all(allTeams[t2name].map(n=>fetchDetails(n)));
+      
+      const t1TotalStats = t1.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
+      const t2TotalStats = t2.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
+      
+      const t1Types = new Set(t1.flatMap(p=>p.types.map(t=>t.type.name)));
+      const t2Types = new Set(t2.flatMap(p=>p.types.map(t=>t.type.name)));
+      
+      const t1Score = t1TotalStats + (t1Types.size * 50);
+      const t2Score = t2TotalStats + (t2Types.size * 50);
+      
+      const winner = t1Score > t2Score ? t1name : (t2Score > t1Score ? t2name : 'Draw');
+      const margin = Math.abs(t1Score - t2Score);
+      
+      playTone(winner === 'Draw' ? 600 : 980, 200);
+      
+      resultDiv.innerHTML = `
+        <div style="background:linear-gradient(90deg,rgba(255,0,0,0.1),rgba(59,76,202,0.1));padding:18px;border-radius:12px;border:2px solid rgba(255,222,0,0.15)">
+          <h3 style="text-align:center;margin-top:0">⚔️ Battle Results</h3>
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center">
+            <div style="text-align:center">
+              <div style="font-weight:600;font-size:18px;text-transform:capitalize;margin-bottom:8px">${t1name}</div>
+              <div style="color:var(--muted)">Total Stats: ${t1TotalStats}</div>
+              <div style="color:var(--muted)">Type Diversity: ${t1Types.size}</div>
+              <div style="font-size:24px;font-weight:700;color:var(--poke-yellow);margin-top:8px">${t1Score}</div>
+            </div>
+            <div style="font-size:32px;color:var(--muted)">VS</div>
+            <div style="text-align:center">
+              <div style="font-weight:600;font-size:18px;text-transform:capitalize;margin-bottom:8px">${t2name}</div>
+              <div style="color:var(--muted)">Total Stats: ${t2TotalStats}</div>
+              <div style="color:var(--muted)">Type Diversity: ${t2Types.size}</div>
+              <div style="font-size:24px;font-weight:700;color:var(--poke-yellow);margin-top:8px">${t2Score}</div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:24px;padding:12px;background:rgba(255,222,0,0.08);border-radius:8px">
+            <div style="font-size:20px;font-weight:700;color:var(--poke-red);text-transform:uppercase">
+              ${winner === 'Draw' ? '🤝 IT\'S A DRAW!' : `🏆 ${winner.toUpperCase()} WINS!`}
+            </div>
+            ${margin > 0 ? `<div style="color:var(--muted);margin-top:4px">Victory margin: ${margin} points</div>` : ''}
+          </div>
+        </div>
+      `;
     }
 
     // Event listeners for new features
@@ -478,6 +570,7 @@
     $('analyzeTeam').addEventListener('click', analyzeTeam);
     $('randomTeam').addEventListener('click', generateRandomTeam);
     $('battleSim').addEventListener('click', battleSimulator);
+    $('closeBattle').addEventListener('click', ()=>{ $('battleModal').style.visibility='hidden'; $('battleModal').style.opacity='0'; });
 
     // initial load
     fetchKanto(); updateTeamUI();
