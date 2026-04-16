@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@300;400;600&display=swap');
+:root{
+  --poke-red:#EE3B3B;
+  --poke-yellow:#FFDE00;
+  --poke-blue:#2A75BB;
+  --bg1:#FFF7E6;
+  --bg2:#F2F8FF;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --glass: rgba(255,255,255,0.7);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,Segoe UI,Roboto,-apple-system,Helvetica,Arial;background:linear-gradient(180deg,var(--bg1),var(--bg2));margin:0;color:#0b1220}
+header{background:linear-gradient(90deg,var(--poke-red),var(--poke-yellow));color:white;padding:18px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 18px rgba(10,20,40,0.08)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo img{filter:drop-shadow(0 4px 6px rgba(0,0,0,0.18))}
+.logo h1{font-family:'Fredoka One',sans-serif;margin:0;font-size:26px}
+.container{max-width:1100px;margin:20px auto;padding:0 16px}
+.top-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.search{flex:1;display:flex;gap:8px}
+.search input{flex:1;padding:12px 14px;border-radius:14px;border:1px solid rgba(15,23,42,0.04);background:rgba(255,255,255,0.9);font-size:15px}
+.btn{background:var(--poke-blue);color:white;padding:9px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:600}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(42,117,187,0.12)}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:18px;margin-top:18px}
+.panel{background:linear-gradient(180deg, rgba(255,255,255,0.9), var(--card));border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(16,24,40,0.05);border:1px solid rgba(10,20,40,0.03)}
+.team{display:flex;flex-direction:column;gap:12px}
+.team .slot{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border:1px dashed rgba(10,20,40,0.04);background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,250,250,0.8))}
+.slot img{width:64px;height:64px}
+.pokelist{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:12px}
+.card{background:linear-gradient(180deg,#fff,#fbfdff);padding:12px;border-radius:12px;text-align:center;cursor:pointer;border:1px solid rgba(10,20,40,0.03);transition:transform .12s,box-shadow .12s}
+.card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(10,20,40,0.08)}
+.card img{width:96px;height:96px}
+.type{display:inline-block;padding:5px 10px;border-radius:999px;color:white;font-size:12px;margin:6px 4px 0}
+.muted{color:var(--muted);font-size:13px}
+.starter-row{display:flex;gap:10px;justify-content:space-between}
+.starter{flex:1;text-align:center;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6));border:1px solid rgba(0,0,0,0.03);transition:transform .12s}
+.starter:hover{transform:translateY(-6px)}
+.starter img{width:90px;height:90px}
+.selected{outline:4px solid rgba(42,117,187,0.12);box-shadow:0 12px 30px rgba(42,117,187,0.08)}
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);padding:20px;visibility:hidden;opacity:0;transition:opacity .18s}
+.modal.open{visibility:visible;opacity:1}
+.modal .dialog{background:var(--card);border-radius:12px;padding:18px;max-width:720px;width:100%;box-shadow:0 30px 60px rgba(2,6,23,0.4)}
+.loading{display:flex;align-items:center;gap:8px}
+.spinner{width:18px;height:18px;border-radius:50%;border:3px solid rgba(0,0,0,0.08);border-top-color:var(--poke-blue);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Type color helpers (keeps badges vivid) */
+.type.fire{background:#EE8130}
+.type.water{background:#6390F0}
+.type.grass{background:#7AC74C}
+.type.electric{background:#F7D02C;color:#111}
+.type.rock{background:#B6A136}
+.type.ghost{background:#735797}
+.type.psychic{background:#F95587}
+.type.flying{background:#A98FF3}
+.type.bug{background:#A6B91A}
+.type.poison{background:#A33EA1}
+
+@media (max-width:880px){.layout{grid-template-columns:1fr}.team{order:2}}
+
+/* Decorative faint pokéball in background */
+body::after{content:'';position:fixed;right:-120px;bottom:-120px;width:420px;height:420px;background:radial-gradient(circle at 45% 45%, rgba(0,0,0,0.03), rgba(0,0,0,0));border-radius:50%;opacity:0.25;pointer-events:none}
+
+/* Entrance animation for cards */
+@keyframes popIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card.appear{animation:popIn .36s cubic-bezier(.2,.9,.2,1) both}
+
+/* small pulse when adding to team */
+@keyframes pulseIn{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+.slot.pulse{animation:pulseIn .48s ease both}
+
+/* saved button feedback */
+.btn.saved{transform:scale(1.04);background:linear-gradient(90deg,var(--poke-yellow),var(--poke-red));box-shadow:0 12px 30px rgba(238,59,59,0.14)}
+
+/* smoother modal entrance */
+.modal .dialog{transform:translateY(-8px);opacity:0;transition:transform .18s ease,opacity .18s ease}
+.modal.open .dialog{transform:translateY(0);opacity:1}
+
