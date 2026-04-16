@@ -1,0 +1,489 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PokéTeam — Dark Team Builder</title>
+  <meta name="description" content="Build a Kanto team with PokeAPI. Dark, game-like UI." />
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <style>
+    /* Embedded dark, immersive styles */
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Inter:wght@300;400;600&display=swap');
+    :root{
+      --bg:#07080a;
+      --panel:#0f1720;
+      --muted:#9aa3b2;
+      --poke-red:#FF0000;
+      --poke-red-dark:#CC0000;
+      --poke-blue:#3B4CCA;
+      --poke-yellow:#FFDE00;
+      --poke-gold:#B3A125;
+      --accent:var(--poke-blue);
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{margin:0;background:linear-gradient(180deg,#2a3b9a,var(--poke-blue) 60%);color:#e6eef6;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{position:sticky;top:0;z-index:40;padding:18px 20px;background:linear-gradient(90deg,var(--poke-red-dark),var(--poke-blue));display:flex;align-items:center;gap:14px;border-bottom:2px solid rgba(255,222,0,0.15);box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+    .title{display:flex;align-items:center;gap:12px}
+    .title img{width:44px;height:44px;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.6))}
+    .title h1{margin:0;font-family:Fredoka One,system-ui;font-size:22px;letter-spacing:0.6px}
+    .controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .search input{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:10px 12px;border-radius:12px;min-width:220px}
+    .btn{background:var(--poke-blue);color:white;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:600;transition:background .2s ease}
+    .btn:hover{background:var(--poke-red)}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,222,0,0.2);color:var(--poke-yellow)}
+    .btn.ghost:hover{background:rgba(255,222,0,0.06);border-color:var(--poke-yellow)}
+    main{padding:18px 20px 140px;max-width:1400px;margin:0 auto}
+
+    /* Type tabs */
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .tab{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--muted)}
+    .tab.active{background:linear-gradient(90deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));color:white;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
+
+    /* grid full width */
+    .pokelist{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+
+    .card{border-radius:12px;padding:12px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.03);transition:transform .14s ease,box-shadow .14s ease;display:flex;flex-direction:column;align-items:center;gap:6px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))}
+    .card img{width:96px;height:96px}
+    .card .name{font-weight:600;text-transform:capitalize}
+    .type-badges{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+    .type-badges .type{padding:6px 10px;border-radius:999px;color:#fff;font-size:12px}
+
+    /* dark tint per type (JS will apply color) */
+    .card[data-type]{box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .card:hover{transform:translateY(-8px)}
+
+    /* subtle glow by CSS variable set inline */
+    .card.glow{box-shadow:0 18px 50px var(--glow, rgba(42,117,187,0.18));}
+
+    /* slide-in right panel */
+    .panel-right{position:fixed;right:0;top:0;height:100%;width:420px;background:linear-gradient(180deg,#07121a,#08151a);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.9,.2,1);box-shadow:-30px 0 60px rgba(0,0,0,0.6);z-index:60;padding:18px;overflow:auto}
+    .panel-right.open{transform:translateX(0)}
+    .panel-right h2{margin-top:6px}
+
+    /* evolution chain visuals */
+    .evo-chain{display:flex;gap:12px;align-items:center}
+    .evo-item{text-align:center}
+    .evo-item img{width:86px;height:86px}
+    .arrow{font-size:22px;color:var(--muted)}
+
+    /* stats bars */
+    .stat{display:flex;align-items:center;gap:8px;margin:6px 0}
+    .stat .bar{height:12px;background:rgba(255,255,255,0.06);border-radius:8px;flex:1;overflow:hidden}
+    .stat .bar > i{display:block;height:100%;background:var(--accent);width:0;transition:width .6s ease}
+
+    /* bottom team bar - more prominent */
+    .teambar{position:fixed;left:12px;right:12px;bottom:12px;height:110px;background:linear-gradient(90deg,rgba(255,0,0,0.08),rgba(59,76,202,0.08));backdrop-filter:blur(8px);border-radius:18px;padding:14px 18px;display:flex;align-items:center;gap:14px;z-index:70;border:2px solid rgba(255,222,0,0.12);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+    .team-slot{width:80px;height:80px;border-radius:14px;background:linear-gradient(135deg,rgba(255,222,0,0.06),rgba(59,76,202,0.04));display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:var(--muted);font-size:12px;border:1px solid rgba(255,222,0,0.08);transition:transform .2s ease}
+    .team-slot img{width:64px;height:64px}
+    .team-slot.filled{background:linear-gradient(135deg,rgba(255,222,0,0.12),rgba(59,76,202,0.08));border-color:rgba(255,222,0,0.2)}
+    .team-actions{margin-left:auto;display:flex;gap:8px}
+
+    /* animations */
+    @keyframes popIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .card.appear{animation:popIn .36s cubic-bezier(.2,.9,.2,1) both}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes teamPulse{0%{transform:scale(1);box-shadow:0 12px 40px rgba(0,0,0,0.6)}50%{transform:scale(1.03);box-shadow:0 18px 60px rgba(255,222,0,0.3),0 0 40px rgba(59,76,202,0.2)}100%{transform:scale(1);box-shadow:0 12px 40px rgba(0,0,0,0.6)}}
+    .teambar.pulse{animation:teamPulse .5s ease-out}
+    @keyframes slotPop{0%{transform:scale(1)}40%{transform:scale(1.15) rotate(-3deg)}70%{transform:scale(0.95) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+    .team-slot.pop{animation:slotPop .5s cubic-bezier(.2,.9,.2,1)}
+
+    /* responsive */
+    @media (max-width:880px){
+      .panel-right{width:100%;}
+      .teambar{left:8px;right:8px}
+    }
+  </style>
+</head>
+<body>
+  <header id="pageHeader">
+    <div class="title">
+      <h1>PokéTeam — Dark Builder</h1>
+    </div>
+    <div class="controls">
+      <div class="search"><input id="searchInput" placeholder="Search Pokémon by name..." aria-label="Search Pokémon"></div>
+      <button id="shinyToggle" class="btn ghost" title="Toggle shiny sprites">✨ Shiny</button>
+      <button id="analyzeTeam" class="btn" title="Analyze team coverage">📊 Analyze</button>
+      <button id="randomTeam" class="btn ghost" title="Generate random team">🎲 Random</button>
+      <button id="battleSim" class="btn ghost" title="Battle simulator">⚔️ Battle</button>
+      <button id="resetBtn" class="btn ghost">Reset</button>
+      <button id="saveTeam" class="btn">Save</button>
+      <button id="loadTeam" class="btn ghost">Load</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="panel" style="margin-bottom:12px;background:transparent;border:none;padding:0">
+        <div class="starter-row" id="starters" style="display:flex;gap:12px"></div>
+      </div>
+
+      <div class="tabs" id="typeTabs"></div>
+
+      <div id="list" class="pokelist"></div>
+    </div>
+  </main>
+
+  <aside id="detailPanel" class="panel-right" aria-hidden="true">
+    <button id="closePanel" class="btn" style="float:right;background:#ef4444">Close</button>
+    <div id="detailContent"></div>
+  </aside>
+
+  <div class="teambar" id="teambar" aria-label="Your team bar">
+    <div id="teamSlots" style="display:flex;gap:10px"></div>
+    <div style="margin-left:auto;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <div id="teamScore" style="font-size:14px;color:var(--poke-yellow);font-weight:600">Score: —</div>
+      <div class="team-actions" style="display:flex;gap:8px">
+        <button id="clearTeam" class="btn ghost">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="globalStatus" style="position:fixed;left:12px;top:84px;background:rgba(0,0,0,0.5);padding:8px 12px;border-radius:10px;display:none;z-index:80"><span id="statusText">Loading...</span></div>
+
+  <script>
+    // Single-file JS app using PokeAPI
+    const API = 'https://pokeapi.co/api/v2';
+    const KANTO_LIMIT = 151;
+    const starters = ['bulbasaur','charmander','squirtle'];
+    const typeColors = {normal:'#A8A77A',fire:'#EE8130',water:'#6390F0',electric:'#F7D02C',grass:'#7AC74C',ice:'#96D9D6',fighting:'#C22E28',poison:'#A33EA1',ground:'#E2BF65',flying:'#A98FF3',psychic:'#F95587',bug:'#A6B91A',rock:'#B6A136',ghost:'#735797',dragon:'#6F35FC',dark:'#705746',steel:'#B7B7CE',fairy:'#D685AD'};
+
+    const state = {all:[],cache:{},team:[],activeType:'all',shinyMode:false,compareList:[]};
+    const $ = id => document.getElementById(id);
+
+    // Simple WebAudio feedback (short tones)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = AudioCtx ? new AudioCtx() : null;
+    function playTone(freq=440,duration=120){ if(!audioCtx) return; const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type='sine'; o.frequency.value = freq; g.gain.value = 0.04; o.connect(g); g.connect(audioCtx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration/1000); setTimeout(()=>{ o.stop(); }, duration+20); }
+
+    function setStatus(text, show=true){ const el=$('globalStatus'); $('statusText').textContent=text; el.style.display = show? 'block':'none'; }
+
+    async function fetchKanto(){
+      setStatus('Loading Kanto Pokémon...');
+      try{
+        const res = await fetch(`${API}/pokemon?limit=${KANTO_LIMIT}`);
+        const data = await res.json(); state.all = data.results;
+        renderStarters(); renderTypeTabs(); renderList(state.all);
+      }catch(e){ setStatus('Failed to load Pokémon', true); console.error(e); }
+      setTimeout(()=> setStatus('', false), 600);
+    }
+
+    async function fetchDetails(nameOrUrl){
+      const key = typeof nameOrUrl === 'string' ? nameOrUrl : nameOrUrl.name;
+      if(state.cache[key]) return state.cache[key];
+      const url = typeof nameOrUrl === 'string' && nameOrUrl.startsWith('http') ? nameOrUrl : `${API}/pokemon/${key}`;
+      const res = await fetch(url); if(!res.ok) throw new Error('fail');
+      const data = await res.json(); state.cache[data.name]=data; return data;
+    }
+
+    function createCard(p){
+      const card = document.createElement('div'); card.className='card'; card.dataset.name = p.name;
+      const img = document.createElement('img'); img.alt = p.name; img.src='';
+      const name = document.createElement('div'); name.className='name'; name.textContent = p.name;
+      const badges = document.createElement('div'); badges.className='type-badges';
+      card.appendChild(img); card.appendChild(name); card.appendChild(badges);
+
+      fetchDetails(p.url).then(d=>{
+        img.src = state.shinyMode ? (d.sprites.front_shiny || d.sprites.front_default) : d.sprites.front_default || '';
+        const primary = d.types[0].type.name;
+        const color = typeColors[primary] || '#666';
+        // dark tinted background based on type
+        card.style.background = `linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.18)), linear-gradient(0deg, ${hexToRgba(color,0.14)}, rgba(0,0,0,0.02))`;
+        card.style.setProperty('--glow', hexToRgba(color,0.36));
+        d.types.forEach(t=>{
+          const b = document.createElement('span'); b.className='type'; b.textContent = t.type.name; b.style.background = typeColors[t.type.name]; badges.appendChild(b);
+        });
+        // hover glow on pointerenter
+        card.addEventListener('mouseenter', ()=>{ card.classList.add('glow'); playTone(680,80);} );
+        card.addEventListener('mouseleave', ()=> card.classList.remove('glow'));
+      }).catch(()=>{});
+
+      card.addEventListener('click', ()=> { playTone(780,60); openDetailPanel(p.name); });
+      card.addEventListener('dblclick', ()=> { playTone(560,90); toggleTeamMember(p.name); });
+      return card;
+    }
+
+    function renderList(list){
+      const cont = $('list'); cont.innerHTML='';
+      list.forEach((p, idx)=>{ const c = createCard(p); cont.appendChild(c); setTimeout(()=>c.classList.add('appear'), idx*28); });
+    }
+
+    function renderStarters(){
+      const el = $('starters'); el.innerHTML='';
+      starters.forEach(name=>{
+        const s = document.createElement('div'); s.className='card'; s.style.minWidth='180px'; s.style.cursor='pointer'; s.style.display='flex'; s.style.flexDirection='column'; s.style.alignItems='center';
+        const img = document.createElement('img'); img.src=''; img.alt=name; img.style.width='110px'; img.style.height='110px';
+        const title = document.createElement('div'); title.className='name'; title.textContent = name; title.style.marginTop='4px';
+        s.appendChild(img); s.appendChild(title);
+        fetchDetails(name).then(d=>{ img.src=d.sprites.front_default; const color = typeColors[d.types[0].type.name]; s.style.background = `linear-gradient(180deg, ${hexToRgba(color,0.18)}, rgba(0,0,0,0.18))`; s.addEventListener('mouseenter', ()=> s.style.boxShadow = `0 18px 48px ${hexToRgba(color,0.22)}`); s.addEventListener('mouseleave', ()=> s.style.boxShadow=''); });
+        s.addEventListener('click', ()=> { playTone(720,90); selectStarter(name); });
+        el.appendChild(s);
+      });
+    }
+
+    function hexToRgba(hex, a=1){
+      const c = hex.replace('#',''); const r = parseInt(c.substring(0,2),16); const g = parseInt(c.substring(2,4),16); const b = parseInt(c.substring(4,6),16); return `rgba(${r},${g},${b},${a})`;
+    }
+
+    // Type tabs
+    const allTypes = ['all','normal','fire','water','electric','grass','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'];
+    function renderTypeTabs(){ const tabs = $('typeTabs'); tabs.innerHTML=''; allTypes.forEach(t=>{ const btn = document.createElement('div'); btn.className='tab'+(t==='all'?' active':''); btn.textContent = t==='all'?'All':capitalize(t); btn.dataset.type=t; btn.addEventListener('click', ()=> filterByType(t, btn)); tabs.appendChild(btn); }); }
+
+    async function filterByType(type, btn){ document.querySelectorAll('.tab').forEach(n=>n.classList.remove('active')); btn.classList.add('active'); state.activeType = type; if(type==='all'){ renderList(state.all); return; }
+      setStatus('Filtering by '+type+'...');
+      const matches = [];
+      const promises = state.all.map(async p=>{
+        const d = state.cache[p.name] ? state.cache[p.name] : await fetchDetails(p.url);
+        if(d.types.some(x=>x.type.name===type)) matches.push(p);
+      });
+      await Promise.all(promises);
+      renderList(matches);
+      setTimeout(()=> setStatus('', false), 220);
+    }
+
+    function capitalize(s){ return s[0].toUpperCase()+s.slice(1); }
+
+    // Team management (bottom bar)
+    function updateTeamUI(animate=false){ const slots = $('teamSlots'); slots.innerHTML=''; for(let i=0;i<4;i++){ const name = state.team[i] || null; const slot = document.createElement('div'); slot.className='team-slot'; if(name){ slot.classList.add('filled'); const img=document.createElement('img'); img.src=''; img.alt=name; slot.appendChild(img); const lbl = document.createElement('div'); lbl.textContent = name; lbl.style.fontSize='11px'; lbl.style.textTransform='capitalize'; slot.appendChild(lbl); fetchDetails(name).then(d=>{ img.src=d.sprites.front_default }); const remove = document.createElement('button'); remove.textContent='×'; remove.title='Remove'; remove.style.marginLeft='6px'; remove.style.background='transparent'; remove.style.border='none'; remove.style.color='var(--muted)'; remove.style.cursor='pointer'; remove.addEventListener('click', ()=>{ removeFromTeam(name); }); slot.appendChild(remove); if(animate){ setTimeout(()=>{ slot.classList.add('pop'); setTimeout(()=>slot.classList.remove('pop'),600); },100); }
+        } else { slot.textContent = 'Empty'; }
+        slots.appendChild(slot);
+    } }
+
+    function addToTeam(name){ if(state.team.includes(name)) return; if(state.team.length===0){ setStatus('Choose a starter first'); setTimeout(()=>setStatus('',false),900); return; } if(state.team.length>=4){ setStatus('Team full'); setTimeout(()=>setStatus('',false),900); return; } state.team.push(name); updateTeamUI(true); updateTeamScore(); playTone(880,120); const bar=$('teambar'); bar.classList.add('pulse'); setTimeout(()=>bar.classList.remove('pulse'),600); }
+    function removeFromTeam(name){ state.team = state.team.filter(n=>n!==name); updateTeamUI(); }
+    function toggleTeamMember(name){ if(state.team.includes(name)) removeFromTeam(name); else addToTeam(name); }
+
+    function selectStarter(name){ // put starter in first slot, update header gradient
+      state.team = state.team.filter(m=>!starters.includes(m)); state.team.unshift(name); updateTeamUI(true); updateTeamScore(); const bar=$('teambar'); bar.classList.add('pulse'); setTimeout(()=>bar.classList.remove('pulse'),600); fetchDetails(name).then(d=>{ const t = d.types[0].type.name; const c = typeColors[t]; const hdr = $('pageHeader'); hdr.style.background = `linear-gradient(90deg, ${hexToRgba(c,0.85)}, rgba(2,6,23,0.5))`; }); }
+
+    // Detail panel: evolution chain, stats bars, matchup
+    async function openDetailPanel(name){ $('detailPanel').classList.add('open'); $('detailPanel').setAttribute('aria-hidden','false'); const content = $('detailContent'); content.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div class="spinner" style="width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,0.06);border-top-color:var(--accent);animation:spin 1s linear infinite"></div><div>Loading...</div></div>';
+      try{
+        const p = await fetchDetails(name);
+        // evolution chain
+        const species = await fetch(p.species.url).then(r=>r.json());
+        const evo = await fetch(species.evolution_chain.url).then(r=>r.json());
+        const chain = parseEvoChain(evo.chain);
+        // stats
+        const stats = p.stats;
+        // type matchups: aggregate for each type
+        const matchup = await computeMatchups(p.types.map(t=>t.type.name));
+
+        content.innerHTML = '';
+        const top = document.createElement('div'); top.style.display='flex'; top.style.gap='12px';
+        const img = document.createElement('img'); img.src = p.sprites.front_default || ''; img.width=140; img.height=140; img.style.background='rgba(255,255,255,0.02)'; img.style.borderRadius='12px';
+        const meta = document.createElement('div'); meta.innerHTML = `<h2 style="margin:0;text-transform:capitalize">${p.name}</h2><div class="muted">#${p.id}</div><div style="margin-top:8px">${p.types.map(t=>`<span class="type" style="background:${typeColors[t.type.name]};margin-right:6px">${t.type.name}</span>`).join('')}</div>`;
+        top.appendChild(img); top.appendChild(meta); content.appendChild(top);
+
+        // evolution chain
+        const evoTitle = document.createElement('h3'); evoTitle.textContent = 'Evolution Chain'; content.appendChild(evoTitle);
+        const evoWrap = document.createElement('div'); evoWrap.className='evo-chain';
+        for(let i=0;i<chain.length;i++){ const item = chain[i]; const div = document.createElement('div'); div.className='evo-item'; const im = document.createElement('img'); im.src=''; im.alt=item.name; im.width=86; im.height=86; const nm = document.createElement('div'); nm.textContent = item.name; nm.style.textTransform='capitalize'; div.appendChild(im); div.appendChild(nm); evoWrap.appendChild(div); if(i<chain.length-1){ const arrow = document.createElement('div'); arrow.className='arrow'; arrow.textContent='→'; evoWrap.appendChild(arrow);} fetchDetails(item.name).then(d=>{ im.src=d.sprites.front_default }); }
+        content.appendChild(evoWrap);
+
+        // stats bars
+        const statsTitle = document.createElement('h3'); statsTitle.textContent='Base Stats'; content.appendChild(statsTitle);
+        stats.forEach(s=>{ const row = document.createElement('div'); row.className='stat'; const label = document.createElement('div'); label.style.width='90px'; label.textContent = s.stat.name; label.style.textTransform='capitalize'; const bar = document.createElement('div'); bar.className='bar'; const inner = document.createElement('i'); inner.style.width = Math.min(100, Math.round((s.base_stat/255)*100)) + '%'; inner.style.background = getPrimaryTypeGradient(p.types[0].type.name); bar.appendChild(inner); row.appendChild(label); row.appendChild(bar); content.appendChild(row); });
+
+        // matchups
+        const mm = document.createElement('div'); mm.innerHTML = `<h3>Type Matchups</h3><div><strong>Weak To:</strong> ${matchup.weak.join(', ') || '—'}</div><div><strong>Strong Against:</strong> ${matchup.strong.join(', ') || '—'}</div>`; content.appendChild(mm);
+
+        // Who beats this
+        const counters = await getTypeCounters(p.types.map(t=>t.type.name));
+        const counterDiv = document.createElement('div'); counterDiv.innerHTML = `<h3>Countered By</h3><div>${counters.map(t=>`<span class="type" style="background:${typeColors[t]};margin-right:6px">${t}</span>`).join('')}</div>`; content.appendChild(counterDiv);
+
+        const btnRow = document.createElement('div'); btnRow.style.marginTop='12px'; btnRow.style.display='flex'; btnRow.style.gap='8px';
+        const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.textContent='Add to Team'; addBtn.addEventListener('click', ()=> addToTeam(p.name)); btnRow.appendChild(addBtn);
+        const compareBtn = document.createElement('button'); compareBtn.className='btn ghost'; compareBtn.textContent='Compare'; compareBtn.addEventListener('click', ()=> toggleCompare(p.name)); btnRow.appendChild(compareBtn);
+        content.appendChild(btnRow);
+
+      }catch(err){ content.innerHTML = '<div class="muted">Failed to load details.</div>'; console.error(err); }
+    }
+
+    function parseEvoChain(chain){ const out = []; function walk(node){ out.push({name:node.species.name}); if(node.evolves_to && node.evolves_to.length) walk(node.evolves_to[0]); } walk(chain); return out; }
+
+    async function computeMatchups(types){ // aggregate damage_relations
+      const strong = new Set(); const weak = new Set();
+      await Promise.all(types.map(async t=>{
+        const d = await fetch(`${API}/type/${t}`).then(r=>r.json()); d.damage_relations.double_damage_to.forEach(x=>strong.add(x.name)); d.damage_relations.double_damage_from.forEach(x=>weak.add(x.name));
+      }));
+      return {strong: Array.from(strong), weak: Array.from(weak)};
+    }
+
+    function getPrimaryTypeGradient(type){ const c = typeColors[type]||'#2A75BB'; return `linear-gradient(90deg, ${hexToRgba(c,0.9)}, ${hexToRgba(c,0.6)})`; }
+
+    // UI wiring
+    $('searchInput').addEventListener('input', e=>{ const q = e.target.value.toLowerCase().trim(); renderList(state.all.filter(p=>p.name.includes(q))); });
+    $('resetBtn').addEventListener('click', ()=>{ state.team=[]; updateTeamUI(); document.querySelectorAll('.card').forEach(n=>n.classList.remove('selected')); });
+    $('clearTeam').addEventListener('click', ()=>{ state.team=[]; updateTeamUI(); });
+    // Save current team as a named team
+    $('saveTeam').addEventListener('click', ()=>{
+      const name = prompt('Save team as — give it a name:');
+      if(!name) return;
+      const all = JSON.parse(localStorage.getItem('poketeams')||'{}');
+      all[name] = state.team.slice();
+      localStorage.setItem('poketeams', JSON.stringify(all));
+      setStatus('Team saved: '+name);
+      setTimeout(()=>setStatus('',false),900);
+      playTone(980,140);
+    });
+
+    // Manage saved teams via a dialog (simple prompt-based list)
+    $('loadTeam').addEventListener('click', ()=>{
+      const all = JSON.parse(localStorage.getItem('poketeams')||'{}');
+      const names = Object.keys(all);
+      if(names.length===0){ setStatus('No saved teams'); setTimeout(()=>setStatus('',false),900); return; }
+      const choice = prompt('Saved teams:\n' + names.map((n,i)=>`${i+1}. ${n}`).join('\n') + '\n\nType the name to load, or prefix with DEL: to delete (e.g. DEL:MyTeam)');
+      if(!choice) return;
+      if(choice.startsWith('DEL:')){
+        const toDel = choice.slice(4).trim(); delete all[toDel]; localStorage.setItem('poketeams', JSON.stringify(all)); setStatus('Deleted '+toDel); setTimeout(()=>setStatus('',false),900); return;
+      }
+      if(all[choice]){ state.team = all[choice].slice(); updateTeamUI(); setStatus('Loaded '+choice); setTimeout(()=>setStatus('',false),900); playTone(760,120); }
+      else { setStatus('No such team: '+choice); setTimeout(()=>setStatus('',false),900); }
+    });
+    $('closePanel').addEventListener('click', ()=>{ $('detailPanel').classList.remove('open'); $('detailPanel').setAttribute('aria-hidden','true'); });
+
+    // Team scoring system
+    async function calculateTeamScore(){
+      if(state.team.length===0) return 0;
+      const details = await Promise.all(state.team.map(n=>fetchDetails(n)));
+      const types = new Set(); details.forEach(d=>d.types.forEach(t=>types.add(t.type.name)));
+      const typeDiversity = types.size * 15;
+      const statTotal = details.reduce((sum,d)=>sum + d.stats.reduce((s,st)=>s+st.base_stat,0),0) / details.length;
+      const statScore = Math.round(statTotal / 10);
+      const teamTypes = details.flatMap(d=>d.types.map(t=>t.type.name));
+      const coverage = await getTypeCoverage(teamTypes);
+      const coverageScore = coverage.strong.length * 5;
+      return Math.round(typeDiversity + statScore + coverageScore);
+    }
+
+    async function updateTeamScore(){
+      const score = await calculateTeamScore();
+      $('teamScore').textContent = score > 0 ? `Score: ${score}` : 'Score: —';
+    }
+
+    // Team analyzer
+    async function analyzeTeam(){
+      if(state.team.length===0){ setStatus('Build a team first'); setTimeout(()=>setStatus('',false),900); return; }
+      const details = await Promise.all(state.team.map(n=>fetchDetails(n)));
+      const teamTypes = details.flatMap(d=>d.types.map(t=>t.type.name));
+      const coverage = await getTypeCoverage(teamTypes);
+      const weaknesses = await getTeamWeaknesses(teamTypes);
+      
+      const panel = $('detailPanel'); panel.classList.add('open');
+      const content = $('detailContent');
+      content.innerHTML = `
+        <h2>Team Analysis</h2>
+        <h3>Type Coverage</h3>
+        <div><strong>Strong Against:</strong><br>${coverage.strong.map(t=>`<span class="type" style="background:${typeColors[t]};margin:4px">${t}</span>`).join('')}</div>
+        <div style="margin-top:12px"><strong>Team Weaknesses:</strong><br>${weaknesses.map(t=>`<span class="type" style="background:${typeColors[t]};margin:4px">${t}</span>`).join('')}</div>
+        <div style="margin-top:12px"><strong>Score:</strong> ${await calculateTeamScore()}</div>
+      `;
+    }
+
+    async function getTypeCoverage(types){
+      const strong = new Set(); const weak = new Set();
+      await Promise.all(types.map(async t=>{
+        const d = await fetch(`${API}/type/${t}`).then(r=>r.json());
+        d.damage_relations.double_damage_to.forEach(x=>strong.add(x.name));
+      }));
+      return {strong: Array.from(strong)};
+    }
+
+    async function getTeamWeaknesses(types){
+      const weakMap = {};
+      await Promise.all(types.map(async t=>{
+        const d = await fetch(`${API}/type/${t}`).then(r=>r.json());
+        d.damage_relations.double_damage_from.forEach(x=>{ weakMap[x.name] = (weakMap[x.name]||0)+1; });
+      }));
+      return Object.keys(weakMap).sort((a,b)=>weakMap[b]-weakMap[a]);
+    }
+
+    async function getTypeCounters(types){
+      const counters = new Set();
+      await Promise.all(types.map(async t=>{
+        const d = await fetch(`${API}/type/${t}`).then(r=>r.json());
+        d.damage_relations.double_damage_from.forEach(x=>counters.add(x.name));
+      }));
+      return Array.from(counters);
+    }
+
+    // Random team generator
+    async function generateRandomTeam(){
+      const starters = ['bulbasaur','charmander','squirtle'];
+      const randomStarter = starters[Math.floor(Math.random()*starters.length)];
+      const available = state.all.filter(p=>!starters.includes(p.name));
+      const selected = [randomStarter];
+      while(selected.length < 4){
+        const rand = available[Math.floor(Math.random()*available.length)];
+        if(!selected.includes(rand.name)) selected.push(rand.name);
+      }
+      state.team = selected;
+      updateTeamUI(true);
+      await updateTeamScore();
+      const bar=$('teambar'); bar.classList.add('pulse'); setTimeout(()=>bar.classList.remove('pulse'),600);
+      playTone(920,140);
+    }
+
+    // Compare mode
+    function toggleCompare(name){
+      if(state.compareList.includes(name)){
+        state.compareList = state.compareList.filter(n=>n!==name);
+      } else {
+        if(state.compareList.length >= 2) state.compareList.shift();
+        state.compareList.push(name);
+      }
+      if(state.compareList.length === 2) showComparison();
+      else { setStatus(`Select ${2-state.compareList.length} more for comparison`); setTimeout(()=>setStatus('',false),900); }
+    }
+
+    async function showComparison(){
+      const [p1, p2] = await Promise.all(state.compareList.map(n=>fetchDetails(n)));
+      const panel = $('detailPanel'); panel.classList.add('open');
+      const content = $('detailContent');
+      content.innerHTML = `<h2>Compare</h2>`;
+      const table = document.createElement('div'); table.style.display='grid'; table.style.gridTemplateColumns='120px 1fr 1fr'; table.style.gap='8px';
+      table.innerHTML = `<div></div><div style="text-align:center;font-weight:600;text-transform:capitalize">${p1.name}</div><div style="text-align:center;font-weight:600;text-transform:capitalize">${p2.name}</div>`;
+      p1.stats.forEach((s,i)=>{
+        const row = `<div style="text-transform:capitalize">${s.stat.name}</div><div style="text-align:center">${s.base_stat}</div><div style="text-align:center">${p2.stats[i].base_stat}</div>`;
+        table.innerHTML += row;
+      });
+      content.appendChild(table);
+      const clearBtn = document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='Clear Comparison'; clearBtn.style.marginTop='12px'; clearBtn.addEventListener('click',()=>{ state.compareList=[]; $('detailPanel').classList.remove('open'); }); content.appendChild(clearBtn);
+    }
+
+    // Battle simulator
+    async function battleSimulator(){
+      const all = JSON.parse(localStorage.getItem('poketeams')||'{}');
+      const names = Object.keys(all);
+      if(names.length < 2){ setStatus('Save at least 2 teams to battle'); setTimeout(()=>setStatus('',false),900); return; }
+      const choice = prompt('Pick two teams to battle:\n' + names.map((n,i)=>`${i+1}. ${n}`).join('\n') + '\n\nEnter like: Team1 vs Team2');
+      if(!choice || !choice.includes('vs')) return;
+      const [t1name, t2name] = choice.split('vs').map(s=>s.trim());
+      if(!all[t1name] || !all[t2name]){ setStatus('Invalid team names'); setTimeout(()=>setStatus('',false),900); return; }
+      const t1 = await Promise.all(all[t1name].map(n=>fetchDetails(n)));
+      const t2 = await Promise.all(all[t2name].map(n=>fetchDetails(n)));
+      const t1Score = t1.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
+      const t2Score = t2.reduce((sum,p)=>sum+p.stats.reduce((s,st)=>s+st.base_stat,0),0);
+      const winner = t1Score > t2Score ? t1name : t2name;
+      const panel = $('detailPanel'); panel.classList.add('open');
+      const content = $('detailContent');
+      content.innerHTML = `<h2>⚔️ Battle Result</h2><div style="margin:12px 0"><strong>${t1name}</strong>: ${t1Score} points</div><div style="margin:12px 0"><strong>${t2name}</strong>: ${t2Score} points</div><h3 style="color:var(--poke-yellow)">Winner: ${winner}!</h3>`;
+    }
+
+    // Event listeners for new features
+    $('shinyToggle').addEventListener('click', ()=>{ state.shinyMode = !state.shinyMode; renderList(state.all.filter(p=>state.activeType==='all' || true)); setStatus(state.shinyMode?'Shiny mode ON':'Shiny mode OFF'); setTimeout(()=>setStatus('',false),600); playTone(840,100); });
+    $('analyzeTeam').addEventListener('click', analyzeTeam);
+    $('randomTeam').addEventListener('click', generateRandomTeam);
+    $('battleSim').addEventListener('click', battleSimulator);
+
+    // initial load
+    fetchKanto(); updateTeamUI();
+
+    // keep old file compatibility: expose functions for testing
+    window._pt = {state, fetchDetails};
+  </script>
+</body>
+</html>
