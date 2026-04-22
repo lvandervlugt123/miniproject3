@@ -4,6 +4,7 @@ Small project that uses the PokeAPI to build a 4‑Pokémon team (Kanto starter 
 
 Features:
 - Fetches Kanto Pokémon via `fetch()`
+- https://pokeapi.co/
 - Search/filter by name
 - Choose a Kanto starter (Bulbasaur/Charmander/Squirtle)
 - Add up to 3 other Pokémon to make a 4-member team
