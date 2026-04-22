@@ -23,3 +23,6 @@ Deployment (GitHub Pages):
 Notes:
 - The app uses PokeAPI (no API key required).
 - Saved teams are stored in `localStorage` under `poketeams`.
+
+
+<img width="1709" height="972" alt="Screenshot 2026-04-21 at 8 08 07 PM" src="https://github.com/user-attachments/assets/4eb99c60-c062-4ec3-8ed0-a766ab8946e6" />
